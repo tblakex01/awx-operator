@@ -39,6 +39,7 @@
       until:
         - "postgres_pod['resources'] | length"
         - "postgres_pod['resources'][0]['status']['phase'] == 'Running'"
+        - "postgres_pod['resources'][0]['status']['containerStatuses'][0]['ready'] == true"
       delay: 5
       retries: 60
 
@@ -99,7 +100,7 @@
     command: |
       bash -c """
       set -e -o pipefail
-      PGPASSWORD={{ awx_postgres_pass }} {{ pgdump }} > {{ backup_dir }}/tower.db
+      PGPASSWORD='{{ awx_postgres_pass }}' {{ pgdump }} > {{ backup_dir }}/tower.db
       echo 'Successful'
       """
   register: data_migration

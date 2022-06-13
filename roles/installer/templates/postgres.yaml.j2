@@ -33,14 +33,39 @@ spec:
         app.kubernetes.io/part-of: '{{ ansible_operator_meta.name }}'
         app.kubernetes.io/managed-by: '{{ deployment_type }}-operator' 
     spec:
-{% if image_pull_secret %}
+{% if image_pull_secret is defined %}
       imagePullSecrets:
         - name: {{ image_pull_secret }}
+{% elif image_pull_secrets | length > 0 %}
+      imagePullSecrets:
+{% for secret in image_pull_secrets %}
+        - name: {{ secret }}
+{% endfor %}
 {% endif %}
+{% if postgres_priority_class is defined %}
+      priorityClassName: '{{ postgres_priority_class }}'
+{% endif %}
+      initContainers:
+        - name: database-check
+          image: '{{ _init_container_image }}'
+          resources: {{ postgres_init_container_resource_requirements }}
+          imagePullPolicy: '{{ image_pull_policy }}'
+          command:
+            - /bin/sh
+            - -c
+            - |
+              [[ -d /check-db/pgsql/data ]] && rm -rf /check-db/data && mv /check-db/pgsql/data/ /check-db/data/ && rm -rf /check-db/pgsql || exit 0
+          volumeMounts:
+            - name: postgres
+              mountPath: /check-db
+              subPath: ''
       containers:
         - image: '{{ _postgres_image }}'
           imagePullPolicy: '{{ image_pull_policy }}'
           name: postgres
+{% if postgres_extra_args %}
+          args: {{ postgres_extra_args }}
+{% endif %}
           env:
             # For postgres_image based on rhel8/postgresql-12
             - name: POSTGRESQL_DATABASE

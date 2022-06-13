@@ -67,6 +67,9 @@ spec:
                 extra_volumes:
                   description: Specify extra volumes to add to the application pod
                   type: string
+                service_annotations:
+                  description: Annotations to add to the service
+                  type: string
                 service_type:
                   description: The service type to be used on the deployed instance
                   type: string
@@ -97,9 +100,6 @@ spec:
                   type: string
                 ingress_tls_secret:
                   description: Secret where the Ingress TLS secret can be found
-                  type: string
-                loadbalancer_annotations:
-                  description: Annotations to add to the loadbalancer
                   type: string
                 loadbalancer_protocol:
                   description: Protocol to use for the loadbalancer
@@ -134,8 +134,14 @@ spec:
                 node_selector:
                   description: nodeSelector for the pods
                   type: string
+                topology_spread_constraints:
+                  description: topology rule(s) for the pods
+                  type: string
                 service_labels:
                   description: Additional labels to apply to the service
+                  type: string
+                annotations:
+                  description: annotations for the pods
                   type: string
                 tolerations:
                   description: node tolerations for the pods
@@ -159,6 +165,9 @@ spec:
                 control_plane_ee_image:
                   description: Registry path to the Execution Environment container image to use on control plane pods
                   type: string
+                control_plane_priority_class:
+                  description: Assign a preexisting priority class to the control plane pods
+                  type: string
                 ee_pull_credentials_secret:
                   description: Secret where pull credentials for registered ees can be found
                   type: string
@@ -173,8 +182,13 @@ spec:
                     - never
                     - IfNotPresent
                     - ifnotpresent
-                image_pull_secret:
-                  description: The image pull secret
+                image_pull_secrets:
+                  description: Image pull secrets for app and database containers
+                  type: array
+                  items:
+                    type: string
+                image_pull_secret:  # deprecated
+                  description: (Deprecated) Image pull secret for app and database containers
                   type: string
                 task_resource_requirements:
                   description: Resource requirements for the task container
@@ -222,6 +236,50 @@ spec:
                   type: object
                 ee_resource_requirements:
                   description: Resource requirements for the ee container
+                  properties:
+                    requests:
+                      properties:
+                        cpu:
+                          type: string
+                        memory:
+                          type: string
+                        storage:
+                          type: string
+                      type: object
+                    limits:
+                      properties:
+                        cpu:
+                          type: string
+                        memory:
+                          type: string
+                        storage:
+                          type: string
+                      type: object
+                  type: object
+                postgres_init_container_resource_requirements:
+                  description: Resource requirements for the postgres init container
+                  properties:
+                    requests:
+                      properties:
+                        cpu:
+                          type: string
+                        memory:
+                          type: string
+                        storage:
+                          type: string
+                      type: object
+                    limits:
+                      properties:
+                        cpu:
+                          type: string
+                        memory:
+                          type: string
+                        storage:
+                          type: string
+                      type: object
+                  type: object
+                redis_resource_requirements:
+                  description: Resource requirements for the redis container
                   properties:
                     requests:
                       properties:
@@ -359,9 +417,16 @@ spec:
                 postgres_storage_class:
                   description: Storage class to use for the PostgreSQL PVC
                   type: string
+                postgres_priority_class:
+                  description: Assign a preexisting priority class to the postgres pod
+                  type: string
                 postgres_data_path:
                   description: Path where the PostgreSQL data are located
                   type: string
+                postgres_extra_args:
+                  type: array
+                  items:
+                    type: string
                 ca_trust_bundle:
                   description: Path where the trusted CA bundle is available
                   type: string
@@ -370,6 +435,9 @@ spec:
                   type: boolean
                 ldap_cacert_secret:
                   description: Secret where can be found the LDAP trusted Certificate Authority Bundle
+                  type: string
+                ldap_password_secret:
+                  description: Secret where can be found the LDAP bind password
                   type: string
                 bundle_cacert_secret:
                   description: Secret where can be found the trusted Certificate Authority Bundle
@@ -397,6 +465,12 @@ spec:
                 projects_storage_access_mode:
                   description: AccessMode for the /var/lib/projects PersistentVolumeClaim
                   default: ReadWriteMany
+                  type: string
+                csrf_cookie_secure:
+                  description: Set csrf cookie secure mode for web
+                  type: string
+                session_cookie_secure:
+                  description: Set session cookie secure mode for web
                   type: string
                 extra_settings:
                   description: Extra settings to specify for the API

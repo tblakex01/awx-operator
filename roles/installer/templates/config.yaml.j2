@@ -18,6 +18,7 @@ data:
   settings: |
     import os
     import socket
+    from django_auth_ldap.config import LDAPSearch
     
     def get_secret():
         if os.path.exists("/etc/tower/SECRET_KEY"):
@@ -25,10 +26,21 @@ data:
     
     ADMINS = ()
     STATIC_ROOT = '/var/lib/awx/public/static'
+    STATIC_URL = '{{ (ingress_path + '/static/').replace('//', '/') }}'
     PROJECTS_ROOT = '/var/lib/awx/projects'
     JOBOUTPUT_ROOT = '/var/lib/awx/job_status'
 
     IS_K8S = True
+
+    # Set memory available based off of resource request/limit for the task pod
+    memory_limit = '{{ task_resource_requirements["limits"]["memory"] if "limits" in task_resource_requirements and "memory" in task_resource_requirements["limits"] }}'
+    if memory_limit:
+        SYSTEM_TASK_ABS_MEM = memory_limit
+
+    # Set cpu available based off of resource request/limit for the task pod
+    cpu_limit = '{{ task_resource_requirements["limits"]["cpu"] if "limits" in task_resource_requirements and "cpu" in task_resource_requirements["limits"] }}'
+    if cpu_limit:
+        SYSTEM_TASK_ABS_CPU = cpu_limit
 
     SECRET_KEY = get_secret()
     
@@ -48,8 +60,8 @@ data:
     CLUSTER_HOST_ID = socket.gethostname()
     SYSTEM_UUID = os.environ.get('MY_POD_UID', '00000000-0000-0000-0000-000000000000')
     
-    CSRF_COOKIE_SECURE = False
-    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = {{ csrf_cookie_secure | bool }}
+    SESSION_COOKIE_SECURE = {{ session_cookie_secure | bool }}
     
     SERVER_EMAIL = 'root@localhost'
     DEFAULT_FROM_EMAIL = 'webmaster@localhost'
@@ -164,6 +176,8 @@ data:
     
             # Protect against click-jacking https://www.owasp.org/index.php/Testing_for_Clickjacking_(OTG-CLIENT-009)
             add_header X-Frame-Options "DENY";
+            # Protect against MIME content sniffing https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
+            add_header X-Content-Type-Options nosniff;
     
             location /nginx_status {
                 stub_status on;
@@ -172,15 +186,15 @@ data:
                 deny all;
             }
     
-            location /static/ {
+            location {{ (ingress_path + '/static').replace('//', '/') }} {
                 alias /var/lib/awx/public/static/;
             }
     
-            location /favicon.ico {
+            location {{ (ingress_path + '/favicon.ico').replace('//', '/') }} {
                 alias /var/lib/awx/public/static/media/favicon.ico;
             }
     
-            location /websocket {
+            location {{ (ingress_path + '/websocket').replace('//', '/') }} {
                 # Pass request to the upstream alias
                 proxy_pass http://daphne;
                 # Require http version 1.1 to allow for upgrade requests
@@ -202,7 +216,7 @@ data:
                 proxy_set_header Connection $connection_upgrade;
             }
     
-            location / {
+            location {{ ingress_path }} {
                 # Add trailing / if missing
                 rewrite ^(.*)$http_host(.*[^/])$ $1$http_host$2/ permanent;
                 uwsgi_read_timeout 120s;
@@ -217,6 +231,7 @@ data:
                 add_header Strict-Transport-Security max-age=15768000;
                 # Protect against click-jacking https://www.owasp.org/index.php/Testing_for_Clickjacking_(OTG-CLIENT-009)
                 add_header X-Frame-Options "DENY";
+                add_header X-Content-Type-Options nosniff;
                 add_header Cache-Control "no-cache, no-store, must-revalidate";
                 add_header Expires "0";
                 add_header Pragma "no-cache";

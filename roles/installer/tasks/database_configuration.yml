@@ -99,6 +99,10 @@
         definition: "{{ lookup('template', 'postgres.yaml.j2') }}"
       register: create_statefulset_result
 
+    - name: Scale down Deployment for migration
+      include_tasks: scale_down_deployment.yml
+      when: create_statefulset_result.changed
+
   rescue:
     - name: Scale down Deployment for migration
       include_tasks: scale_down_deployment.yml
@@ -149,9 +153,14 @@
   until:
     - "postgres_pod['resources'] | length"
     - "postgres_pod['resources'][0]['status']['phase'] == 'Running'"
+    - "postgres_pod['resources'][0]['status']['containerStatuses'][0]['ready'] == true"
   delay: 5
   retries: 60
   when: pg_config['resources'][0]['data']['type'] | default('') | b64decode == 'managed'
+
+- name: Set database as managed
+  set_fact:
+    managed_database: "{{ pg_config['resources'][0]['data']['type'] | default('') | b64decode == 'managed' }}"
 
 - name: Look up details for this deployment
   k8s_info:

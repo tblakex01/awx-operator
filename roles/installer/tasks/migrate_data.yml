@@ -29,6 +29,7 @@
   until:
     - "postgres_pod['resources'] | length"
     - "postgres_pod['resources'][0]['status']['phase'] == 'Running'"
+    - "postgres_pod['resources'][0]['status']['containerStatuses'][0]['ready'] == true"
   delay: 5
   retries: 60
 
@@ -65,7 +66,7 @@
     command: |
       bash -c """
       set -e -o pipefail
-      PGPASSWORD={{ awx_old_postgres_pass }} {{ pgdump }} | PGPASSWORD={{ awx_postgres_pass }} {{ pg_restore }}
+      PGPASSWORD='{{ awx_old_postgres_pass }}' {{ pgdump }} | PGPASSWORD='{{ awx_postgres_pass }}' {{ pg_restore }}
       echo 'Successful'
       """
   no_log: true

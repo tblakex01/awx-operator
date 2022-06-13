@@ -55,4 +55,6 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
       serviceAccountName: controller-manager
+      imagePullSecrets:
+        - name: redhat-operators-pull-secret
       terminationGracePeriodSeconds: 10
